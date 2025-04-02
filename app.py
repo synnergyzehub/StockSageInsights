@@ -24,6 +24,14 @@ from supply_chain_visualization import show_supply_chain_visualization
 from synergy_visualization import show_synergy_visualization
 from voi_jeans_demo import show_voi_jeans_demo
 
+# Import notification service
+from notification_service import show_notification_settings, check_twilio_credentials
+from retail_distribution import show_retail_distribution
+
+# Import new modules for HSN code tax mapping and trade show order engine
+from hsn_tax_mapping import show_hsn_tax_mapping
+from trade_show_order_engine import show_trade_show_order_engine
+
 # Configure the page
 st.set_page_config(
     page_title="ECG Manufacturing Portal",
@@ -32,15 +40,41 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize session state for app flow
+if 'page' not in st.session_state:
+    st.session_state.page = 'synergy_visualization'  # Start with a visual overview of the platform
+
 # Initialize database with sample data if needed
 if 'db_initialized' not in st.session_state:
     # Try to initialize database
     initialize_database()
     st.session_state.db_initialized = True
 
-# Initialize session state for app flow
-if 'page' not in st.session_state:
-    st.session_state.page = 'manufacturing_dashboard'  # Start directly on manufacturing dashboard page
+# Check for missing Twilio credentials when accessing notification features
+if 'check_twilio_keys' not in st.session_state:
+    st.session_state.check_twilio_keys = False
+    
+if st.session_state.page == 'notification_settings' and not check_twilio_credentials() and not st.session_state.check_twilio_keys:
+    st.session_state.check_twilio_keys = True
+    st.info("Twilio credentials required for SMS notifications. Please use the button below to set them up.")
+    
+    # Create a button for the user to initiate the secrets request process
+    if st.button("Set Up Twilio Credentials"):
+        # Use ask_secrets tool to get the secrets
+        from ask_secrets import ask_secrets
+        ask_secrets(
+            secret_keys=["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_PHONE_NUMBER"],
+            user_message="""
+            To enable SMS notifications for department alerts, please provide your Twilio credentials:
+            
+            1. **TWILIO_ACCOUNT_SID**: Your Twilio account SID 
+            2. **TWILIO_AUTH_TOKEN**: Your Twilio auth token
+            3. **TWILIO_PHONE_NUMBER**: Your Twilio phone number (must be purchased from Twilio)
+            
+            These credentials will be stored securely as environment variables and used only for sending 
+            SMS notifications to the configured department contacts.
+            """
+        )
 
 if 'completed_onboarding' not in st.session_state:
     st.session_state.completed_onboarding = True  # Skip onboarding for testing
@@ -158,6 +192,20 @@ with st.sidebar:
         if st.button("📉 Raw Material Demand Prediction", use_container_width=True, key="raw_material_prediction"):
             st.session_state.page = 'material_tracker'
         
+        if st.button("💲 HSN Code Tax Mapping", use_container_width=True, key="hsn_tax_mapping", help="Map and analyze transaction types based on HSN codes for taxation"):
+            st.session_state.page = 'hsn_tax_mapping'
+            
+        # Trade Show Order Engine section
+        st.markdown("#### Trade Show & Procurement")
+        if st.button("🏙️ Trade Show Order Engine", use_container_width=True, key="trade_show_order", help="Manage orders, samples, and procurement for trade shows"):
+            st.session_state.page = 'trade_show_order_engine'
+            
+        if st.button("📊 Sample Management", use_container_width=True, key="sample_management", help="Track and manage product samples for trade shows and buyers"):
+            st.session_state.page = 'trade_show_order_engine'
+            
+        if st.button("📆 Trade Show Calendar", use_container_width=True, key="trade_show_calendar", help="View upcoming trade shows and manage participation"):
+            st.session_state.page = 'trade_show_order_engine'
+        
         # Database initialization (hidden in an expander to not clutter the UI)
         with st.expander("⚙️ Database Management"):
             if st.button("Database Setup", use_container_width=True, key="db_init"):
@@ -167,46 +215,44 @@ with st.sidebar:
         # Commune Connect Portal Navigation
         st.markdown("### Voi Jeans Retail Distribution")
         
-        # Store Management
-        st.markdown("#### Store Management")
-        if st.button("🏬 Retail Store Network", use_container_width=True, key="browse_products"):
-            st.session_state.page = 'product_catalog'
+        # Integrated Retail Distribution Dashboard
+        if st.button("🏬 Retail Distribution Dashboard", use_container_width=True, type="primary", key="retail_distribution"):
+            st.session_state.page = 'retail_distribution'
         
-        if st.button("📊 Daily Sales vs Target", use_container_width=True, key="daily_sales"):
-            st.session_state.page = 'retailer_analysis'
+        # Main retail sections
+        st.markdown("#### Store Management")
+        if st.button("🏬 Store Network", use_container_width=True, key="store_network"):
+            st.session_state.page = 'retail_distribution'
+        
+        if st.button("📊 Sales Performance", use_container_width=True, key="sales_performance"):
+            st.session_state.page = 'retail_distribution'
         
         if st.button("🔖 E-Wards Loyalty Program", use_container_width=True, key="loyalty_program"):
-            st.session_state.page = 'product_detail'
+            st.session_state.page = 'retail_distribution'
         
-        if st.button("📦 Store Inventory Management", use_container_width=True, key="view_order"):
-            st.session_state.page = 'order_booking'
+        # Consumer Analytics
+        st.markdown("#### Consumer Insights")
+        if st.button("👤 Consumer Behavior Analysis", use_container_width=True, key="consumer_analysis"):
+            st.session_state.page = 'retail_distribution'
+            
+        if st.button("🔍 Retail Fashion Trends", use_container_width=True, key="fashion_trends"):
+            st.session_state.page = 'retail_distribution'
+            
+        if st.button("📊 Marketing Effectiveness", use_container_width=True, key="marketing_analytics"):
+            st.session_state.page = 'retail_distribution'
         
-        # Product Management
-        st.markdown("#### Product Management")
-        
-        if st.button("👖 Denim Collection", use_container_width=True, key="denim_collection"):
+        # Product Catalog Access
+        st.markdown("#### Product Catalog")
+        if st.button("👖 Product Collection", use_container_width=True, key="product_collection"):
             st.session_state.page = 'product_catalog'
             
-        if st.button("🎯 SS25 Collection Planning", use_container_width=True, key="ss25_planning"):
-            st.session_state.page = 'order_style_management'
-            
-        if st.button("🔍 Style Performance Analysis", use_container_width=True, key="style_performance"):
-            st.session_state.page = 'retailer_analysis'
-        
-        # Market Intelligence Section
-        st.markdown("#### Retail Analytics")
-        
-        if st.button("📈 Sales Performance Dashboard", use_container_width=True, key="market_health"):
-            st.session_state.page = 'retailer_analysis'
-        
-        if st.button("📱 Online vs In-Store Analysis", use_container_width=True, key="online_vs_store"):
-            st.session_state.page = 'manufacturing_dashboard'
-            
-        if st.button("🏙️ Regional Market Insights", use_container_width=True, key="regional_insights"):
-            st.session_state.page = 'reports'
+        # Trade Show Access
+        st.markdown("#### Trade Show Management")
+        if st.button("🏙️ Trade Show Orders", use_container_width=True, key="retail_trade_show", help="Manage trade show orders and samples"):
+            st.session_state.page = 'trade_show_order_engine'
         
         # Add a hint about the retail analytics
-        st.info("Access real-time sales analytics and performance metrics across all Voi Jeans retail locations.")
+        st.info("The Retail Distribution Dashboard provides a comprehensive view of store performance, consumer behavior, and loyalty program metrics.")
         
         # Add access to the merchandiser agent
         st.markdown("### Your Support Team")
@@ -227,7 +273,7 @@ with st.sidebar:
             """, unsafe_allow_html=True)
         else:
             # Show a teaser about having a merchandiser
-            st.info("Connect with your dedicated merchandising agent for personalized support throughout your order process.")
+            st.info("Connect with your dedicated merchandising agent for personalized support.")
     
     with tab3:
         # Voi Jeans Management Hub
@@ -264,6 +310,17 @@ with st.sidebar:
         if st.button("📱 Mobile App Administration", use_container_width=True, key="user_categorization"):
             st.session_state.page = 'line_plan'
             
+        # Check Twilio credentials
+        has_twilio = check_twilio_credentials()
+        
+        if st.button(
+            f"🔔 Notification Settings {'' if has_twilio else '⚠️'}", 
+            use_container_width=True, 
+            key="notification_settings",
+            help="Configure SMS notifications for departments and events"
+        ):
+            st.session_state.page = 'notification_settings'
+            
         # Business Intelligence section
         st.markdown("#### Business Intelligence")
         if st.button("📈 Executive Dashboard", use_container_width=True, key="executive_dashboard"):
@@ -277,6 +334,9 @@ with st.sidebar:
         
         if st.button("🌐 Market Trend Analysis", use_container_width=True, key="license_suspension"):
             st.session_state.page = 'material_tracker'
+            
+        if st.button("💲 HSN Code Tax Analysis", use_container_width=True, key="hsn_tax_analysis", help="Map and analyze transaction types based on HSN codes for tax reporting"):
+            st.session_state.page = 'hsn_tax_mapping'
             
         # Synergyze Visualization section
         st.markdown("#### Synergyze Ecosystem")
@@ -350,6 +410,14 @@ elif st.session_state.page == 'synergy_visualization':
     show_synergy_visualization()
 elif st.session_state.page == 'voi_jeans_demo':
     show_voi_jeans_demo()
+elif st.session_state.page == 'notification_settings':
+    show_notification_settings()
+elif st.session_state.page == 'retail_distribution':
+    show_retail_distribution()
+elif st.session_state.page == 'hsn_tax_mapping':
+    show_hsn_tax_mapping()
+elif st.session_state.page == 'trade_show_order_engine':
+    show_trade_show_order_engine()
 
 # Footer
 st.markdown("---")
